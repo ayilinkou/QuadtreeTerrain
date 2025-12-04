@@ -32,9 +32,8 @@ public static class MeshGenerator
 		int skirtTris = 0;
 		if (bIncludeSkirt)
 		{
-			Debug.Log("Include skirt logic not yet added!");
-			//skirtVerts = vertsPerSide * 4;
-			//skirtTris = quadsPerSide * 4 * 2;
+			skirtVerts = vertsPerSide * 4;
+			skirtTris = quadsPerSide * 4 * 2;
 		}
 
 		Vector3[] vertices = new Vector3[baseVerts + skirtVerts];
