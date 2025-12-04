@@ -205,7 +205,7 @@ Transform:
   m_GameObject: {fileID: 778772590}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 14.13667, y: 5.775177, z: -4.4292912}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -240,14 +240,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e7e69dc931a946040bd4ef12c1484756, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  totalSize: 128
-  maxDepth: 5
+  totalSize: 256
+  maxDepth: 8
   baseResolution: 4
   splitFactor: 1.5
-  player: {fileID: 778772593}
-  cameraMoveThreshold: 0.25
-  updateInterval: 0.2
-  chunkMaterial: {fileID: 0}
+  player: {fileID: 1369961149}
+  cameraMoveThreshold: 1
+  updateInterval: 1
+  chunkMaterial: {fileID: 2100000, guid: b44095232c0082640804712fcdded2b5, type: 2}
   bIncludeSkirt: 1
   skirtHeight: 0.1
   bDrawBounds: 1
@@ -298,9 +298,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   moveSpeed: 10
   verticalSpeed: 5
-  boostMultiplier: 2
+  boostMultiplier: 20
   camTransform: {fileID: 0}
-  mouseSens: 2
+  mouseSens: 0.2
   bLockCursor: 1
 --- !u!4 &1369961149
 Transform:
@@ -311,7 +311,7 @@ Transform:
   m_GameObject: {fileID: 1369961147}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -14.13667, y: -4.775177, z: 1.8692914}
+  m_LocalPosition: {x: 0, y: 1, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:

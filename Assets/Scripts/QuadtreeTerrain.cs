@@ -77,7 +77,12 @@ public class QuadtreeTerrain : MonoBehaviour
             lastCamPos = camPos;
             lastUpdateTime = now;
 
-            root.Evaluate(camPos, GetSplitThresholdForDepth);
+            root.Evaluate(camPos, GetSplitThresholdForDepth, node =>
+			{
+				Chunk chunk = node.userData as Chunk;
+				if (chunk != null)
+					pool.Return(chunk.gameObject);
+			});
 
             UpdateMeshesForLeaves();
             CleanupNonLeafUserData();

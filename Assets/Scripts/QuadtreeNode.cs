@@ -26,7 +26,7 @@ public class QuadtreeNode
 
     // evaluate if splitting or merging should occur
     // recurses to children
-    public void Evaluate(Vector3 cameraPos, Func<int, float> getSplitThresholdForDepth)
+    public void Evaluate(Vector3 cameraPos, Func<int, float> getSplitThresholdForDepth, Action<QuadtreeNode> releaseUserData)
     {
         Vector2 camXZ = new Vector2(cameraPos.x, cameraPos.z);
         float dist = Vector2.Distance(camXZ, center);
@@ -41,15 +41,15 @@ public class QuadtreeNode
             // recurse evaluation to children
             for (int i = 0; i < 4; i++)
             {
-                children[i].Evaluate(cameraPos, getSplitThresholdForDepth);
+                children[i].Evaluate(cameraPos, getSplitThresholdForDepth, releaseUserData);
             }
         }
         else
         {
-            // don't split, if we have children we merge them
-            if (!bIsLeaf)
+            // if we have children, we merge
+            if (!bIsLeaf && children != null)
             {
-                Merge();
+                Merge(releaseUserData);
             }
             // if it's a leaf, do nothing
         }
@@ -71,14 +71,23 @@ public class QuadtreeNode
 	}
 
     // recursively destroy children and set as leaf
-    private void Merge()
+    private void Merge(Action<QuadtreeNode> releaseUserData)
     {
         if (bIsLeaf)
             return;
 
 		for (int i = 0; i < 4; i++)
 		{
-            children[i].Merge();
+            if (children[i] == null)
+                continue;
+            
+            children[i].Merge(releaseUserData);
+
+			// after merging, return the chunk back into the pool
+			// any released chunks will be garbage collected
+			if (children[i].userData != null)
+                releaseUserData?.Invoke(children[i]);
+
             children[i].userData = null;
 		}
         children = null;

@@ -4,7 +4,8 @@ using UnityEngine;
 
 public static class MeshGenerator
 {
-	// calculate number of quads per side
+	
+    // calculate number of quads per side
 	public static int GetResolutionForDepth(int depth, int maxDepth, int baseResolution, int maxResolution = 256)
 	{
 		int shiftCount = Math.Max(0, maxDepth - depth);
