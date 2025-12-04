@@ -222,7 +222,7 @@ GameObject:
   - component: {fileID: 1326127400}
   - component: {fileID: 1326127399}
   m_Layer: 0
-  m_Name: TerrainGameObject
+  m_Name: QuadtreeTerrain
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -240,17 +240,18 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e7e69dc931a946040bd4ef12c1484756, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  totalSize: 256
+  totalSize: 512
   maxDepth: 8
   baseResolution: 4
   splitFactor: 1.5
+  ignoreHeight: 0
   player: {fileID: 1369961149}
   cameraMoveThreshold: 1
   updateInterval: 1
   chunkMaterial: {fileID: 2100000, guid: b44095232c0082640804712fcdded2b5, type: 2}
-  bIncludeSkirt: 1
+  includeSkirt: 1
   skirtHeight: 0.1
-  bDrawBounds: 1
+  drawBounds: 1
   boundsColor: {r: 1, g: 0, b: 0, a: 1}
 --- !u!4 &1326127400
 Transform:
@@ -298,10 +299,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   moveSpeed: 10
   verticalSpeed: 5
-  boostMultiplier: 20
+  boostMultiplier: 10
   camTransform: {fileID: 0}
   mouseSens: 0.2
-  bLockCursor: 1
+  lockCursor: 1
 --- !u!4 &1369961149
 Transform:
   m_ObjectHideFlags: 0

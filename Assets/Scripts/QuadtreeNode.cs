@@ -10,16 +10,19 @@ public class QuadtreeNode
 
     public QuadtreeNode[] children;
 
-    public bool bIsLeaf => children == null;
+    private QuadtreeTerrain qtTerrain;
+
+    public bool isLeaf => children == null;
 
     public object userData;
 
-    public QuadtreeNode(Vector2 center, float size, int depth, int maxDepth)
+    public QuadtreeNode(Vector2 center, float size, int depth, int maxDepth, QuadtreeTerrain qtTerrain)
     {
         this.center = center;
         this.size = size;
         this.depth = depth;
         this.maxDepth = maxDepth;
+        this.qtTerrain = qtTerrain;
         children = null;
         userData = null;
     }
@@ -28,14 +31,24 @@ public class QuadtreeNode
     // recurses to children
     public void Evaluate(Vector3 cameraPos, Func<int, float> getSplitThresholdForDepth, Action<QuadtreeNode> releaseUserData)
     {
-        Vector2 camXZ = new Vector2(cameraPos.x, cameraPos.z);
-        float dist = Vector2.Distance(camXZ, center);
-        float threshold = getSplitThresholdForDepth != null ? getSplitThresholdForDepth(depth) : size * 1.5f;
-        bool bShouldSplit = (depth < maxDepth) && (dist < threshold);
-
-        if (bShouldSplit)
+        float dist;
+        if (qtTerrain.ignoreHeight)
         {
-            if (bIsLeaf)
+			Vector2 camXZ = new Vector2(cameraPos.x, cameraPos.z);
+			dist = Vector2.Distance(camXZ, center);
+		}
+		else
+		{
+            Vector3 centerWithHeight = new Vector3(center.x, 0f, center.y);
+            dist = Vector3.Distance(cameraPos, centerWithHeight);
+		}
+
+		float threshold = getSplitThresholdForDepth != null ? getSplitThresholdForDepth(depth) : size * 1.5f;
+        bool shouldSplit = (depth < maxDepth) && (dist < threshold);
+
+        if (shouldSplit)
+        {
+            if (isLeaf)
                 Split();
 
             // recurse evaluation to children
@@ -47,7 +60,7 @@ public class QuadtreeNode
         else
         {
             // if we have children, we merge
-            if (!bIsLeaf && children != null)
+            if (!isLeaf && children != null)
             {
                 Merge(releaseUserData);
             }
@@ -57,23 +70,23 @@ public class QuadtreeNode
 
     private void Split()
     {
-        if (!bIsLeaf)
+        if (!isLeaf)
             return;
 
         children = new QuadtreeNode[4];
         float half = size * 0.5f;
         float quarter = size * 0.25f;
 
-        children[0] = new QuadtreeNode(center + new Vector2(-quarter, -quarter), half, depth + 1, maxDepth);
-        children[1] = new QuadtreeNode(center + new Vector2( quarter, -quarter), half, depth + 1, maxDepth);
-        children[2] = new QuadtreeNode(center + new Vector2(-quarter,  quarter), half, depth + 1, maxDepth);
-        children[3] = new QuadtreeNode(center + new Vector2( quarter,  quarter), half, depth + 1, maxDepth);
+        children[0] = new QuadtreeNode(center + new Vector2(-quarter, -quarter), half, depth + 1, maxDepth, qtTerrain);
+        children[1] = new QuadtreeNode(center + new Vector2( quarter, -quarter), half, depth + 1, maxDepth, qtTerrain);
+        children[2] = new QuadtreeNode(center + new Vector2(-quarter,  quarter), half, depth + 1, maxDepth, qtTerrain);
+        children[3] = new QuadtreeNode(center + new Vector2( quarter,  quarter), half, depth + 1, maxDepth, qtTerrain);
 	}
 
     // recursively destroy children and set as leaf
     private void Merge(Action<QuadtreeNode> releaseUserData)
     {
-        if (bIsLeaf)
+        if (isLeaf)
             return;
 
 		for (int i = 0; i < 4; i++)
@@ -100,7 +113,7 @@ public class QuadtreeNode
         if (action == null)
             return;
 
-        if (bIsLeaf)
+        if (isLeaf)
         {
             action(this);
         }
@@ -121,7 +134,7 @@ public class QuadtreeNode
 
 		action(this);
 
-		if (!bIsLeaf)
+		if (!isLeaf)
 		{
 			for (int i = 0; i < 4; i++)
 			{
@@ -132,7 +145,7 @@ public class QuadtreeNode
 
     public int CountLeaves()
     {
-        if (bIsLeaf) return 1;
+        if (isLeaf) return 1;
 
         int count = 0;
         for (int i = 0; i < 4; i++)

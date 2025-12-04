@@ -10,6 +10,7 @@ public class QuadtreeTerrain : MonoBehaviour
     public int maxDepth = 5;
     public int baseResolution = 4;
     public float splitFactor = 1.5f;
+    public bool ignoreHeight = true;
 
     [Header("Updating")]
     public Transform player;
@@ -18,11 +19,11 @@ public class QuadtreeTerrain : MonoBehaviour
 
     [Header("Rendering")]
     public Material chunkMaterial;
-    public bool bIncludeSkirt = true;
+    public bool includeSkirt = true;
     public float skirtHeight = 0.1f;
 
     [Header("Debug")]
-    public bool bDrawBounds = true;
+    public bool drawBounds = true;
     public Color boundsColor = Color.cyan;
 
     private QuadtreeNode root;
@@ -46,7 +47,7 @@ public class QuadtreeTerrain : MonoBehaviour
 	private void OnValidate()
 	{
         totalSize = Mathf.Max(1f, totalSize);
-        maxDepth = Mathf.Clamp(maxDepth, 0, 12);
+        maxDepth = Mathf.Clamp(maxDepth, 0, 16);
         baseResolution = Mathf.Clamp(baseResolution, 1, 128);
         splitFactor = Mathf.Max(0.01f, splitFactor);
 	}
@@ -69,10 +70,10 @@ public class QuadtreeTerrain : MonoBehaviour
         float now = Time.time;
 
         // only update if moved significantly or timer elapsed
-        bool bCameraMoved = (camPos -  lastCamPos).sqrMagnitude > cameraMoveThreshold * cameraMoveThreshold;
-        bool bIntervalElapsed = now - lastUpdateTime > updateInterval;
+        bool cameraMoved = (camPos -  lastCamPos).sqrMagnitude > cameraMoveThreshold * cameraMoveThreshold;
+        bool intervalElapsed = now - lastUpdateTime > updateInterval;
 
-        if (bCameraMoved || bIntervalElapsed)
+        if (cameraMoved || intervalElapsed)
         {
             lastCamPos = camPos;
             lastUpdateTime = now;
@@ -91,7 +92,7 @@ public class QuadtreeTerrain : MonoBehaviour
 
 	private void OnRenderObject()
 	{
-        if (!bDrawBounds || root == null || Camera.current == null || Camera.current != Camera.main)
+        if (!drawBounds || root == null || Camera.current == null || Camera.current != Camera.main)
             return;
 
         lineMaterial.SetPass(0);
@@ -115,7 +116,7 @@ public class QuadtreeTerrain : MonoBehaviour
     private void BuildTree()
     {
         ReleaseAllChunks();
-        root = new QuadtreeNode(Vector2.zero, totalSize, 0, maxDepth);
+        root = new QuadtreeNode(Vector2.zero, totalSize, 0, maxDepth, this);
     }
 
     private float GetSplitThresholdForDepth(int depth)
@@ -169,10 +170,10 @@ public class QuadtreeTerrain : MonoBehaviour
             if (chunk.quadsPerSide == desired)
                 return;
 
-            string key = MeshKey(desired, node.size, bIncludeSkirt, skirtHeight);
+            string key = MeshKey(desired, node.size, includeSkirt, skirtHeight);
             if (!meshCache.TryGetValue(key, out Mesh mesh))
             {
-                mesh = MeshGenerator.CreateFlatGrid(desired, node.size, bIncludeSkirt, skirtHeight);
+                mesh = MeshGenerator.CreateFlatGrid(desired, node.size, includeSkirt, skirtHeight);
                 mesh.name = key;
                 meshCache[key] = mesh;
             }
@@ -187,7 +188,7 @@ public class QuadtreeTerrain : MonoBehaviour
     {
         root.ForEachNode(node =>
         {
-            if (!node.bIsLeaf && node.userData != null)
+            if (!node.isLeaf && node.userData != null)
             {
                 // release chunk if present
                 Chunk chunk = node.userData as Chunk; // TODO: same here
@@ -239,9 +240,9 @@ public class QuadtreeTerrain : MonoBehaviour
         meshCache.Clear();
     }
 
-    private string MeshKey(int quads, float size, bool bSkirt, float skirtH)
+    private string MeshKey(int quads, float size, bool drawSkirt, float skirtH)
     {
-        return $"q{quads}_s{size}_sk{(bSkirt ? 1 : 0)}_h{skirtH}";
+        return $"q{quads}_s{size}_sk{(drawSkirt ? 1 : 0)}_h{skirtH}";
     }
 
     private Material DefaultMaterial()

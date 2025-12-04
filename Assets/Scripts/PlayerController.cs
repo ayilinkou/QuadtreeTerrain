@@ -11,14 +11,14 @@ public class PlayerController : MonoBehaviour
     [Header("Mouse Look")]
     public Transform camTransform;
     public float mouseSens = 0.2f;
-    public bool bLockCursor = true;
+    public bool lockCursor = true;
 
     private float pitch = 0f;
     private float yaw = 0f;
 
 	private void Awake()
 	{
-		if (bLockCursor)
+		if (lockCursor)
 		{
 			Cursor.lockState = CursorLockMode.Locked;
 			Cursor.visible = false;
@@ -54,9 +54,9 @@ public class PlayerController : MonoBehaviour
 
     private void HandleMovement()
     {
-        float speed = moveSpeed;
+        float multiplier = 1f;
         if (Keyboard.current.leftShiftKey.isPressed)
-            speed *= boostMultiplier;
+            multiplier *= boostMultiplier;
 
         Vector2 horizontalMove = Vector2.zero;
 		if (Keyboard.current.aKey.isPressed) horizontalMove.x -= 1f;
@@ -64,12 +64,12 @@ public class PlayerController : MonoBehaviour
 		if (Keyboard.current.sKey.isPressed) horizontalMove.y -= 1f;
 		if (Keyboard.current.wKey.isPressed) horizontalMove.y += 1f;
 		
-        horizontalMove *= speed;
+        horizontalMove *= multiplier;
 
         float verticalMove = 0f;
         if (Keyboard.current.eKey.isPressed) verticalMove += 1f;
         if (Keyboard.current.qKey.isPressed) verticalMove -= 1f;
-        verticalMove *= verticalSpeed;
+        verticalMove *= verticalSpeed * multiplier;
 
         Vector3 totalMove = new Vector3(horizontalMove.x, verticalMove, horizontalMove.y);
         transform.position += totalMove * Time.deltaTime;

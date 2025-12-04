@@ -20,7 +20,7 @@ public static class MeshGenerator
 		return res;
 	}
 
-	public static Mesh CreateFlatGrid(int quadsPerSide, float size, bool bIncludeSkirt = true, float skirtHeight = 0.1f)
+	public static Mesh CreateFlatGrid(int quadsPerSide, float size, bool includeSkirt = true, float skirtHeight = 0.1f)
 	{
 		if (quadsPerSide < 1)
 			quadsPerSide = 1;
@@ -31,7 +31,7 @@ public static class MeshGenerator
 
 		int skirtVerts = 0;
 		int skirtTris = 0;
-		if (bIncludeSkirt)
+		if (includeSkirt)
 		{
 			skirtVerts = vertsPerSide * 4;
 			skirtTris = quadsPerSide * 4 * 2;
@@ -79,7 +79,7 @@ public static class MeshGenerator
 			}
 		}
 
-		if (bIncludeSkirt)
+		if (includeSkirt)
 		{
 			AddSkirts(baseVerts, skirtVerts, vertsPerSide, quadsPerSide, skirtHeight, vertices, normals, uv, tris, triIndex);
 		}
