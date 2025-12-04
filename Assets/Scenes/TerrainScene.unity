@@ -241,13 +241,13 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   totalSize: 512
-  maxDepth: 8
+  maxDepth: 12
   baseResolution: 4
   splitFactor: 1.5
   ignoreHeight: 1
   player: {fileID: 1369961149}
-  cameraMoveThreshold: 1
-  updateInterval: 1
+  cameraMoveThreshold: 0.5
+  updateInterval: 0.2
   chunkMaterial: {fileID: 2100000, guid: b44095232c0082640804712fcdded2b5, type: 2}
   includeSkirt: 1
   skirtHeight: 0.1
@@ -299,9 +299,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   moveSpeed: 10
-  verticalSpeed: 5
+  verticalSpeed: 2
   boostMultiplier: 10
-  camTransform: {fileID: 0}
   mouseSens: 0.2
   lockCursor: 1
 --- !u!4 &1369961149
