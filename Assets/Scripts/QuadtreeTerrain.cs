@@ -25,8 +25,10 @@ public class QuadtreeTerrain : MonoBehaviour
     [Header("Debug")]
     public bool drawBounds = true;
     public Color boundsColor = Color.cyan;
+    public bool visualiseChunks = false; // this can only be toggled before starting play session
+    private bool visualiseChunksCached = false;
 
-    private QuadtreeNode root;
+	private QuadtreeNode root;
     private Vector3 lastCamPos;
     private float lastUpdateTime = -999f;
 
@@ -34,6 +36,7 @@ public class QuadtreeTerrain : MonoBehaviour
     private Dictionary<string, Mesh> meshCache = new Dictionary<string, Mesh>(64);
 
     private Material lineMaterial;
+    private Color materialColor;
     
     void Start()
     {
@@ -42,6 +45,8 @@ public class QuadtreeTerrain : MonoBehaviour
         EnsurePool();
         lastCamPos = player != null ? player.position : Vector3.zero;
         lastUpdateTime = -999f;
+        materialColor = chunkMaterial != null ? chunkMaterial.color : new Color(0f, 0.8f, 0f);
+        visualiseChunksCached = visualiseChunks;
     }
 
 	private void OnValidate()
@@ -180,6 +185,7 @@ public class QuadtreeTerrain : MonoBehaviour
 
             chunk.SetMesh(mesh);
             chunk.SetMaterial(chunkMaterial != null ? chunkMaterial : DefaultMaterial());
+            chunk.SetColor(visualiseChunksCached ? UnityEngine.Random.ColorHSV(0f, 1f, 0.5f, 1f, 0.5f, 1f) : materialColor);
             chunk.quadsPerSide = desired;
         });
     }

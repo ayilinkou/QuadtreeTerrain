@@ -244,15 +244,16 @@ MonoBehaviour:
   maxDepth: 8
   baseResolution: 4
   splitFactor: 1.5
-  ignoreHeight: 0
+  ignoreHeight: 1
   player: {fileID: 1369961149}
   cameraMoveThreshold: 1
   updateInterval: 1
   chunkMaterial: {fileID: 2100000, guid: b44095232c0082640804712fcdded2b5, type: 2}
   includeSkirt: 1
   skirtHeight: 0.1
-  drawBounds: 1
+  drawBounds: 0
   boundsColor: {r: 1, g: 0, b: 0, a: 1}
+  visualiseChunks: 1
 --- !u!4 &1326127400
 Transform:
   m_ObjectHideFlags: 0
