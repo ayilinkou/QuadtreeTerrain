@@ -76,7 +76,7 @@ public class PlayerController : MonoBehaviour
         if (Keyboard.current.aKey.isPressed) horizontalMove -= transform.right;
 
         horizontalMove.Normalize();
-        horizontalMove *= multiplier;
+        horizontalMove *= moveSpeed * multiplier;
 
         float verticalMove = 0f;
         if (Keyboard.current.eKey.isPressed) verticalMove += 1f;
