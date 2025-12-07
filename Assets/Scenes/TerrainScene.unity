@@ -240,23 +240,25 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e7e69dc931a946040bd4ef12c1484756, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  totalSize: 1024
+  totalSize: 32768
   maxDepth: 8
-  baseResolution: 1
+  baseResolution: 2
   splitFactor: 1
   ignoreHeight: 1
-  player: {fileID: 1369961149}
+  playerTransform: {fileID: 1369961149}
   cameraMoveThreshold: 10
   updateInterval: 1
   chunkMaterial: {fileID: 2100000, guid: b44095232c0082640804712fcdded2b5, type: 2}
+  heightOffsetType: 2
+  heightDisplacement: 1000
+  heightmapToNoiseWeight: 0.5
   heightmapTexture: {fileID: 2800000, guid: 9bb6bbdd834367b00a94f192c42822e1, type: 3}
-  heightDisplacement: 100
   seed: 12345
   randomiseSeed: 1
-  scale: 1
-  octaves: 4
-  persistence: 0.5
-  lacunarity: 2
+  scale: 20
+  octaves: 8
+  persistence: 0.4
+  lacunarity: 3
   drawBounds: 0
   visualiseChunks: 1
   chunkCount: 0
@@ -304,8 +306,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 843d798062dc0e64c9d0ba33403f476f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  moveSpeed: 10
-  verticalSpeed: 10
+  moveSpeed: 50
+  verticalSpeed: 50
   boostMultiplier: 5
   mouseSens: 0.2
   lockCursor: 1
@@ -318,7 +320,7 @@ Transform:
   m_GameObject: {fileID: 1369961147}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 1, z: 0}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:

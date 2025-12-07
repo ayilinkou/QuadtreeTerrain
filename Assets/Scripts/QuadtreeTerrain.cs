@@ -3,8 +3,16 @@ using System.Collections.Generic;
 using UnityEditor.ShaderKeywordFilter;
 using UnityEngine;
 
-public class QuadtreeTerrain : MonoBehaviour
+public enum HeightOffsetType
 {
+    None,
+    Heightmap,
+    Noise,
+    HeightmapAndNoise
+}
+
+public class QuadtreeTerrain : MonoBehaviour
+{    
     [Header("Quadtree")]
     public float totalSize = 128f;
     public int maxDepth = 5;
@@ -13,17 +21,20 @@ public class QuadtreeTerrain : MonoBehaviour
     public bool ignoreHeight = true;
 
     [Header("Updating")]
-    public Transform player;
+    public Transform playerTransform;
     public float cameraMoveThreshold = 0.25f;
     public float updateInterval = 0.2f; // seconds
 
     [Header("Rendering")]
     public Material chunkMaterial;
+    public HeightOffsetType heightOffsetType = HeightOffsetType.Noise;
+    public float heightDisplacement;
+    [Tooltip("Used when Height Offset Type is set to Heightmap And Noise. 0 = heightmap only, 1 = noise only")]
+    public float heightmapToNoiseWeight = 0.5f;
 
     [Header("Heightmap")]
     public Texture2D heightmapTexture;
     private float[] heightmap;
-    public float heightDisplacement;
 
     [Header("Noise")]
     public int seed = 12345;
@@ -33,8 +44,8 @@ public class QuadtreeTerrain : MonoBehaviour
     public float persistence = 0.5f;
     public float lacunarity = 2f;
     private System.Random rng;
-    private int noiseOffsetX;
-    private int noiseOffsetY;
+    private float noiseOffsetX;
+    private float noiseOffsetY;
 
     [Header("Debug")]
     public bool drawBounds = true;
@@ -56,12 +67,15 @@ public class QuadtreeTerrain : MonoBehaviour
     
     void Start()
     {
+        Vector3 pos = playerTransform.position;
+        playerTransform.position = new Vector3(pos.x, pos.y + heightDisplacement, pos.z);
+
         InitRng();
         LoadHeightmap();
         BuildTree();
         CreateLineMaterial();
         EnsurePool();
-        lastCamPos = player != null ? player.position : Vector3.zero;
+        lastCamPos = playerTransform != null ? playerTransform.position : Vector3.zero;
         lastUpdateTime = -999f;
         materialColor = chunkMaterial != null ? chunkMaterial.color : new Color(0f, 0.8f, 0f);
         visualiseChunksCached = visualiseChunks;
@@ -73,6 +87,7 @@ public class QuadtreeTerrain : MonoBehaviour
         maxDepth = Mathf.Clamp(maxDepth, 0, 16);
         baseResolution = Mathf.Clamp(baseResolution, 1, 128);
         splitFactor = Mathf.Max(0.01f, splitFactor);
+        heightmapToNoiseWeight = Mathf.Clamp01(heightmapToNoiseWeight);
 	}
 
 	private void OnDisable()
@@ -86,10 +101,10 @@ public class QuadtreeTerrain : MonoBehaviour
         if (root == null)
             BuildTree();
 
-        if (player == null)
+        if (playerTransform == null)
             return;
 
-        Vector3 camPos = player.position;
+        Vector3 camPos = playerTransform.position;
         float now = Time.time;
 
         // only update if moved significantly or timer elapsed
@@ -145,8 +160,8 @@ public class QuadtreeTerrain : MonoBehaviour
         }
 
         rng = new System.Random(seed);
-        noiseOffsetX = rng.Next(-100000, 100000);
-        noiseOffsetY = rng.Next(-100000, 100000);
+        noiseOffsetX = (float)(rng.NextDouble() * 2000.0 - 1000.0);
+        noiseOffsetY = (float)(rng.NextDouble() * 2000.0 - 1000.0);
     }
 
     private void LoadHeightmap()

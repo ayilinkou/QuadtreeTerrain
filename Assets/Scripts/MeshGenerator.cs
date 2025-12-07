@@ -55,8 +55,24 @@ public static class MeshGenerator
                 float u = (worldX + halfWorld) / qtTerrain.totalSize;
                 float v = (worldZ + halfWorld) / qtTerrain.totalSize;
 
-                //float vy = qtTerrain.GetHeightmapValue(u, v) * qtTerrain.heightDisplacement;
-                float vy = qtTerrain.GetPerlinNoise(u, v, qtTerrain.seed) * qtTerrain.heightDisplacement;
+				float vy = 0f;
+
+				switch (qtTerrain.heightOffsetType)
+				{
+					case HeightOffsetType.Heightmap:
+						vy += qtTerrain.GetHeightmapValue(u, v) * qtTerrain.heightDisplacement;
+						break;
+					case HeightOffsetType.Noise:
+						vy += qtTerrain.GetPerlinNoise(u, v, qtTerrain.seed) * qtTerrain.heightDisplacement;
+						break;
+					case HeightOffsetType.HeightmapAndNoise:
+						vy += qtTerrain.GetHeightmapValue(u, v) * (1f - qtTerrain.heightmapToNoiseWeight);
+						vy += qtTerrain.GetPerlinNoise(u, v, qtTerrain.seed) * qtTerrain.heightmapToNoiseWeight;
+						vy *= qtTerrain.heightDisplacement;
+						break;
+					default:
+						break;
+				}
 
 				vertices[idx] = new Vector3(vx, vy, vz);
 				uv[idx] = new Vector2(u, v);
