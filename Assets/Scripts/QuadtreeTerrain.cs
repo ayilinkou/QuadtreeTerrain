@@ -25,10 +25,21 @@ public class QuadtreeTerrain : MonoBehaviour
     private float[] heightmap;
     public float heightDisplacement;
 
+    [Header("Noise")]
+    public int seed = 12345;
+    public bool randomiseSeed = true;
+    public float scale = 1f;
+    public int octaves = 1;
+    public float persistence = 0.5f;
+    public float lacunarity = 2f;
+    private System.Random rng;
+    private int noiseOffsetX;
+    private int noiseOffsetY;
+
     [Header("Debug")]
     public bool drawBounds = true;
-    public Color boundsColor = Color.cyan;
     public bool visualiseChunks = false; // this can only be toggled before starting play session
+    private Color boundsColor = Color.red;
     private bool visualiseChunksCached = false;
     [SerializeField]
     private int chunkCount;
@@ -45,6 +56,7 @@ public class QuadtreeTerrain : MonoBehaviour
     
     void Start()
     {
+        InitRng();
         LoadHeightmap();
         BuildTree();
         CreateLineMaterial();
@@ -124,6 +136,19 @@ public class QuadtreeTerrain : MonoBehaviour
         GL.PopMatrix();
 	}
 
+    private void InitRng()
+    {
+        if (randomiseSeed)
+        {
+            System.Random tempRng = new System.Random();
+            seed = tempRng.Next(int.MinValue, int.MaxValue);
+        }
+
+        rng = new System.Random(seed);
+        noiseOffsetX = rng.Next(-100000, 100000);
+        noiseOffsetY = rng.Next(-100000, 100000);
+    }
+
     private void LoadHeightmap()
     {
         if (heightmapTexture == null)
@@ -150,7 +175,29 @@ public class QuadtreeTerrain : MonoBehaviour
         int newV = Mathf.Clamp((int)(v * (height - 1)), 0, height - 1);
 
         int index = newV * height + newU;
-        return heightmap[index] * heightDisplacement;
+        return heightmap[index];
+    }
+
+    public float GetPerlinNoise(float u, float v, int noiseSeed)
+    {
+        float amplitude = 1f;
+        float frequency = 1f;
+        float noiseHeight = 0f;
+
+        for (int i = 0; i < octaves; i++)
+        {
+            float sampleX = (u * scale * frequency) + noiseOffsetX;
+            float sampleY = (v * scale * frequency) + noiseOffsetY;
+
+            float perlinValue = Mathf.PerlinNoise(sampleX, sampleY);
+            noiseHeight += perlinValue * amplitude;
+
+            amplitude *= persistence;
+            frequency *= lacunarity;
+        }
+
+        return noiseHeight;
+        //return Mathf.Clamp01(noiseHeight);
     }
 
     private void BuildTree()
