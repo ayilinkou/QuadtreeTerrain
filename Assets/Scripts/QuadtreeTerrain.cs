@@ -19,14 +19,19 @@ public class QuadtreeTerrain : MonoBehaviour
 
     [Header("Rendering")]
     public Material chunkMaterial;
-    public bool includeSkirt = true;
-    public float skirtHeight = 0.1f;
+
+    [Header("Heightmap")]
+    public Texture2D heightmapTexture;
+    private float[] heightmap;
+    public float heightDisplacement;
 
     [Header("Debug")]
     public bool drawBounds = true;
     public Color boundsColor = Color.cyan;
     public bool visualiseChunks = false; // this can only be toggled before starting play session
     private bool visualiseChunksCached = false;
+    [SerializeField]
+    private int chunkCount;
 
 	private QuadtreeNode root;
     private Vector3 lastCamPos;
@@ -40,6 +45,7 @@ public class QuadtreeTerrain : MonoBehaviour
     
     void Start()
     {
+        LoadHeightmap();
         BuildTree();
         CreateLineMaterial();
         EnsurePool();
@@ -85,13 +91,13 @@ public class QuadtreeTerrain : MonoBehaviour
 
             root.Evaluate(camPos, GetSplitThresholdForDepth, node =>
 			{
-				Chunk chunk = node.userData as Chunk;
+				Chunk chunk = node.chunkData;
 				if (chunk != null)
 					pool.Return(chunk.gameObject);
 			});
 
             UpdateMeshesForLeaves();
-            CleanupNonLeafUserData();
+            CleanupNonLeafChunkData();
         }
     }
 
@@ -118,6 +124,35 @@ public class QuadtreeTerrain : MonoBehaviour
         GL.PopMatrix();
 	}
 
+    private void LoadHeightmap()
+    {
+        if (heightmapTexture == null)
+        {
+            Debug.LogWarning("heightmapTexture is null!");
+            return;
+        }
+
+        Color[] values = heightmapTexture.GetPixels();
+
+        heightmap = new float[values.Length];
+        for (uint i = 0; i < values.Length; i++)
+        {
+            heightmap[i] = values[i].r;
+        }
+    }
+
+    public float GetHeightmapValue(float u, float v)
+    {
+        int width = heightmapTexture.width;
+        int height = heightmapTexture.height;
+
+        int newU = Mathf.Clamp((int)(u * (width - 1)), 0, width - 1);
+        int newV = Mathf.Clamp((int)(v * (height - 1)), 0, height - 1);
+
+        int index = newV * height + newU;
+        return heightmap[index] * heightDisplacement;
+    }
+
     private void BuildTree()
     {
         ReleaseAllChunks();
@@ -139,11 +174,13 @@ public class QuadtreeTerrain : MonoBehaviour
     private void UpdateMeshesForLeaves()
     {
         EnsurePool();
+        chunkCount = 0;
 
         root.ForEachLeaf(node =>
         {
-            Chunk chunk = node.userData as Chunk; // TODO: maybe just make UserData a Chunk?
-            int desired = MeshGenerator.GetResolutionForDepth(node.depth, maxDepth, baseResolution, maxResolution: 256);
+            Chunk chunk = node.chunkData;
+            int desired = MeshGenerator.GetResolutionForDepth(node.depth, maxDepth, baseResolution, maxResolution: 256, node.size);
+            chunkCount++;
 
             if (chunk == null)
             {
@@ -158,7 +195,7 @@ public class QuadtreeTerrain : MonoBehaviour
                 chunk = go.GetComponent<Chunk>();
                 chunk.quadsPerSide = -1;
 
-                node.userData = chunk;
+                node.chunkData = chunk;
                 chunk.ownerNode = node;
             }
             else
@@ -175,10 +212,10 @@ public class QuadtreeTerrain : MonoBehaviour
             if (chunk.quadsPerSide == desired)
                 return;
 
-            string key = MeshKey(desired, node.size, includeSkirt, skirtHeight);
+            string key = MeshKey(desired, node.size, node.center);
             if (!meshCache.TryGetValue(key, out Mesh mesh))
             {
-                mesh = MeshGenerator.CreateFlatGrid(desired, node.size, includeSkirt, skirtHeight);
+                mesh = MeshGenerator.CreateChunkMesh(this, desired, node.size, node.center);
                 mesh.name = key;
                 meshCache[key] = mesh;
             }
@@ -190,19 +227,19 @@ public class QuadtreeTerrain : MonoBehaviour
         });
     }
 
-    private void CleanupNonLeafUserData()
+    private void CleanupNonLeafChunkData()
     {
         root.ForEachNode(node =>
         {
-            if (!node.isLeaf && node.userData != null)
+            if (!node.isLeaf && node.chunkData != null)
             {
                 // release chunk if present
-                Chunk chunk = node.userData as Chunk; // TODO: same here
+                Chunk chunk = node.chunkData;
                 if (chunk != null)
                 {
                     pool.Return(chunk.gameObject);
                 }
-                node.userData = null;
+                node.chunkData = null;
             }
         });
     }
@@ -213,9 +250,9 @@ public class QuadtreeTerrain : MonoBehaviour
 		{
             root.ForEachNode(node =>
             {
-                if (node.userData != null)
+                if (node.chunkData != null)
                 {
-                    Chunk chunk = node.userData as Chunk; // TODO: same here
+                    Chunk chunk = node.chunkData;
                     if (chunk != null)
                     {
                         if (pool != null)
@@ -225,10 +262,11 @@ public class QuadtreeTerrain : MonoBehaviour
                         else
                             DestroyImmediate(chunk);
                     }
-                    node.userData = null;
+                    node.chunkData = null;
                 }
             });
 		}
+        chunkCount = 0;
 	}
 
     private void ClearMeshCache()
@@ -246,9 +284,9 @@ public class QuadtreeTerrain : MonoBehaviour
         meshCache.Clear();
     }
 
-    private string MeshKey(int quads, float size, bool drawSkirt, float skirtH)
+    private string MeshKey(int quads, float size, Vector2 center)
     {
-        return $"q{quads}_s{size}_sk{(drawSkirt ? 1 : 0)}_h{skirtH}";
+        return $"q{quads}_s{size}_c{center.x}_{center.y}";
     }
 
     private Material DefaultMaterial()

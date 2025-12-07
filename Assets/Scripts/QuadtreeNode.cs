@@ -14,7 +14,7 @@ public class QuadtreeNode
 
     public bool isLeaf => children == null;
 
-    public object userData;
+    public Chunk chunkData;
 
     public QuadtreeNode(Vector2 center, float size, int depth, int maxDepth, QuadtreeTerrain qtTerrain)
     {
@@ -24,7 +24,7 @@ public class QuadtreeNode
         this.maxDepth = maxDepth;
         this.qtTerrain = qtTerrain;
         children = null;
-        userData = null;
+        chunkData = null;
     }
 
     // evaluate if splitting or merging should occur
@@ -98,10 +98,10 @@ public class QuadtreeNode
 
 			// after merging, return the chunk back into the pool
 			// any released chunks will be garbage collected
-			if (children[i].userData != null)
+			if (children[i].chunkData != null)
                 releaseUserData?.Invoke(children[i]);
 
-            children[i].userData = null;
+            children[i].chunkData = null;
 		}
         children = null;
 	}
