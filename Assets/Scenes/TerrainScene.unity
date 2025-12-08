@@ -248,20 +248,22 @@ MonoBehaviour:
   playerTransform: {fileID: 1369961149}
   cameraMoveThreshold: 10
   updateInterval: 1
+  frameBudgetMilliseconds: 1
+  meshCacheSize: 128
   chunkMaterial: {fileID: 2100000, guid: b44095232c0082640804712fcdded2b5, type: 2}
-  heightOffsetType: 2
+  heightOffsetType: 1
   heightDisplacement: 1000
-  heightmapToNoiseWeight: 0.5
-  heightmapTexture: {fileID: 2800000, guid: 9bb6bbdd834367b00a94f192c42822e1, type: 3}
   seed: 12345
   randomiseSeed: 1
   scale: 20
   octaves: 8
   persistence: 0.4
   lacunarity: 3
-  drawBounds: 0
   visualiseChunks: 1
   chunkCount: 0
+  chunksInQueue: 0
+  materialColor: {r: 0, g: 0, b: 0, a: 0}
+  visualiseChunksCached: 0
 --- !u!4 &1326127400
 Transform:
   m_ObjectHideFlags: 0

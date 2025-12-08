@@ -6,9 +6,7 @@ using UnityEngine;
 public enum HeightOffsetType
 {
     None,
-    Heightmap,
-    Noise,
-    HeightmapAndNoise
+    Noise
 }
 
 public class QuadtreeTerrain : MonoBehaviour
@@ -24,46 +22,44 @@ public class QuadtreeTerrain : MonoBehaviour
     public Transform playerTransform;
     public float cameraMoveThreshold = 0.25f;
     public float updateInterval = 0.2f; // seconds
+    [Tooltip("Time in milliseconds which will be used per frame towards generating terrain meshes. Any meshes remaining will be handled in the next frame.")]
+    public float frameBudgetMilliseconds = 8f;
+    [Tooltip("Higher means more smooth transitions to cached meshes, but higher memory cost.")]
+    public int meshCacheSize = 128;
 
     [Header("Rendering")]
     public Material chunkMaterial;
     public HeightOffsetType heightOffsetType = HeightOffsetType.Noise;
     public float heightDisplacement;
-    [Tooltip("Used when Height Offset Type is set to Heightmap And Noise. 0 = heightmap only, 1 = noise only")]
-    public float heightmapToNoiseWeight = 0.5f;
-
-    [Header("Heightmap")]
-    public Texture2D heightmapTexture;
-    private float[] heightmap;
 
     [Header("Noise")]
     public int seed = 12345;
     public bool randomiseSeed = true;
     public float scale = 1f;
+    [Tooltip("Number of layers of noise.")]
     public int octaves = 1;
+    [Tooltip("Multiplier for amplitude per octave of noise. Keep below 1 for fBm behaviour.")]
     public float persistence = 0.5f;
+    [Tooltip("Multiplier for frequency per octave of noise. Keep above 1 for fBm behaviour.")]
     public float lacunarity = 2f;
     private System.Random rng;
     private float noiseOffsetX;
     private float noiseOffsetY;
 
     [Header("Debug")]
-    public bool drawBounds = true;
-    public bool visualiseChunks = false; // this can only be toggled before starting play session
-    private Color boundsColor = Color.red;
-    private bool visualiseChunksCached = false;
-    [SerializeField]
-    private int chunkCount;
+    [Tooltip("This only takes effect for meshes being generated after changing value. Ideally set before starting a play session")]
+    public bool visualiseChunks = false;
+    [SerializeField] private int chunkCount;
+    [SerializeField] private int chunksInQueue;
 
 	private QuadtreeNode root;
     private Vector3 lastCamPos;
     private float lastUpdateTime = -999f;
 
     private ChunkPool pool;
-    private Dictionary<string, Mesh> meshCache = new Dictionary<string, Mesh>(64);
 
-    private Material lineMaterial;
-    private Color materialColor;
+    [HideInInspector] public Color materialColor;
+    [HideInInspector] public bool visualiseChunksCached = false;
     
     void Start()
     {
@@ -71,9 +67,8 @@ public class QuadtreeTerrain : MonoBehaviour
         playerTransform.position = new Vector3(pos.x, pos.y + heightDisplacement, pos.z);
 
         InitRng();
-        LoadHeightmap();
+        MeshGenerator.Init(this, meshCacheSize);
         BuildTree();
-        CreateLineMaterial();
         EnsurePool();
         lastCamPos = playerTransform != null ? playerTransform.position : Vector3.zero;
         lastUpdateTime = -999f;
@@ -87,13 +82,13 @@ public class QuadtreeTerrain : MonoBehaviour
         maxDepth = Mathf.Clamp(maxDepth, 0, 16);
         baseResolution = Mathf.Clamp(baseResolution, 1, 128);
         splitFactor = Mathf.Max(0.01f, splitFactor);
-        heightmapToNoiseWeight = Mathf.Clamp01(heightmapToNoiseWeight);
+        octaves = Mathf.Clamp(octaves, 1, 32);
 	}
 
 	private void OnDisable()
 	{
         ReleaseAllChunks();
-        ClearMeshCache();
+        MeshGenerator.ClearMeshCache();
 	}
 
 	void Update()
@@ -126,30 +121,9 @@ public class QuadtreeTerrain : MonoBehaviour
             UpdateMeshesForLeaves();
             CleanupNonLeafChunkData();
         }
+
+        chunksInQueue = MeshGenerator.meshesInQueue;
     }
-
-	private void OnRenderObject()
-	{
-        if (!drawBounds || root == null || Camera.current == null || Camera.current != Camera.main)
-            return;
-
-        lineMaterial.SetPass(0);
-
-        GL.PushMatrix();
-
-        GL.LoadProjectionMatrix(Camera.current.projectionMatrix);
-        GL.modelview = Camera.current.worldToCameraMatrix;
-
-        GL.Begin(GL.LINES);
-        GL.Color(boundsColor);
-        root.ForEachNode(node =>
-        {
-            DrawNodeBoundsGL(node);
-        });
-        GL.End();
-
-        GL.PopMatrix();
-	}
 
     private void InitRng()
     {
@@ -162,35 +136,6 @@ public class QuadtreeTerrain : MonoBehaviour
         rng = new System.Random(seed);
         noiseOffsetX = (float)(rng.NextDouble() * 2000.0 - 1000.0);
         noiseOffsetY = (float)(rng.NextDouble() * 2000.0 - 1000.0);
-    }
-
-    private void LoadHeightmap()
-    {
-        if (heightmapTexture == null)
-        {
-            Debug.LogWarning("heightmapTexture is null!");
-            return;
-        }
-
-        Color[] values = heightmapTexture.GetPixels();
-
-        heightmap = new float[values.Length];
-        for (uint i = 0; i < values.Length; i++)
-        {
-            heightmap[i] = values[i].r;
-        }
-    }
-
-    public float GetHeightmapValue(float u, float v)
-    {
-        int width = heightmapTexture.width;
-        int height = heightmapTexture.height;
-
-        int newU = Mathf.Clamp((int)(u * (width - 1)), 0, width - 1);
-        int newV = Mathf.Clamp((int)(v * (height - 1)), 0, height - 1);
-
-        int index = newV * height + newU;
-        return heightmap[index];
     }
 
     public float GetPerlinNoise(float u, float v, int noiseSeed)
@@ -210,9 +155,7 @@ public class QuadtreeTerrain : MonoBehaviour
             amplitude *= persistence;
             frequency *= lacunarity;
         }
-
         return noiseHeight;
-        //return Mathf.Clamp01(noiseHeight);
     }
 
     private void BuildTree()
@@ -248,6 +191,10 @@ public class QuadtreeTerrain : MonoBehaviour
             {
                 // get chunk GO from pool
                 GameObject go = pool.Rent();
+
+                // chunk from pool might have incorrect mesh, so we hide while generating
+                go.SetActive(false);
+                
                 go.name = $"Chunk_d{node.depth}_c{node.center.x}_{node.center.y}";
                 go.transform.SetParent(transform, false);
                 go.transform.localPosition = new Vector3(node.center.x, 0f, node.center.y);
@@ -275,17 +222,21 @@ public class QuadtreeTerrain : MonoBehaviour
                 return;
 
             string key = MeshKey(desired, node.size, node.center);
-            if (!meshCache.TryGetValue(key, out Mesh mesh))
+            if (!MeshGenerator.meshCache.TryGetValue(key, out Mesh mesh))
             {
-                mesh = MeshGenerator.CreateChunkMesh(this, desired, node.size, node.center);
-                mesh.name = key;
-                meshCache[key] = mesh;
+                chunk.isGenerationPending = true;
+                MeshGenerator.EnqueueMesh(key, desired, node.size, node.center, chunk);
+                if (!MeshGenerator.isGenerating)
+                    StartCoroutine(MeshGenerator.ProcessMeshQueue(frameBudgetMilliseconds));
+                return;
             }
 
             chunk.SetMesh(mesh);
             chunk.SetMaterial(chunkMaterial != null ? chunkMaterial : DefaultMaterial());
             chunk.SetColor(visualiseChunksCached ? UnityEngine.Random.ColorHSV(0f, 1f, 0.5f, 1f, 0.5f, 1f) : materialColor);
             chunk.quadsPerSide = desired;
+            chunk.isGenerationPending = false;
+            chunk.gameObject.SetActive(true);
         });
     }
 
@@ -331,71 +282,13 @@ public class QuadtreeTerrain : MonoBehaviour
         chunkCount = 0;
 	}
 
-    private void ClearMeshCache()
-    {
-        foreach (Mesh mesh in meshCache.Values)
-        {
-            if (mesh != null)
-            {
-                if (Application.isPlaying)
-                    DestroyImmediate(mesh);
-                else
-                    Destroy(mesh);
-            }
-        }
-        meshCache.Clear();
-    }
-
     private string MeshKey(int quads, float size, Vector2 center)
     {
         return $"q{quads}_s{size}_c{center.x}_{center.y}";
     }
 
-    private Material DefaultMaterial()
+    public static Material DefaultMaterial()
     {
         return new Material(Shader.Find("Standard"));
     }
-
-    private void CreateLineMaterial()
-    {
-        if (lineMaterial != null)
-            return;
-
-        Shader shader = Shader.Find("Hidden/Internal-Colored");
-        if (shader == null)
-        {
-            lineMaterial = new Material(Shader.Find("Unlit/Color"));
-            lineMaterial.hideFlags = HideFlags.HideAndDontSave;
-            lineMaterial.SetColor("_Color", boundsColor);
-        }
-        else
-        {
-            lineMaterial = new Material(shader);
-            lineMaterial.hideFlags = HideFlags.HideAndDontSave;
-            lineMaterial.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
-            lineMaterial.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
-            lineMaterial.SetInt("_ZWrite", 0);
-
-            // always pass depth test so that the terrain can't cover the debug lines
-            lineMaterial.SetInt("_ZTest", (int)UnityEngine.Rendering.CompareFunction.Always);
-		}
-    }
-
-    private void DrawNodeBoundsGL(QuadtreeNode node)
-    {
-        float half = node.size * 0.5f;
-        Vector3 c = new Vector3(node.center.x, 0f, node.center.y);
-
-        Vector3[] corners = new Vector3[4];
-        corners[0] = c + new Vector3(-half, 0f, -half);
-        corners[1] = c + new Vector3( half, 0f, -half);
-        corners[2] = c + new Vector3( half, 0f,  half);
-        corners[3] = c + new Vector3(-half, 0f,  half);
-
-        for (int i = 0; i < 4; i++)
-        {
-            GL.Vertex(corners[i]);
-            GL.Vertex(corners[(i + 1) % 4]);
-        }
-	}
 }

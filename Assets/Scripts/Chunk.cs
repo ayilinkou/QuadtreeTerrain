@@ -4,6 +4,7 @@ public class Chunk : MonoBehaviour
 {
     [HideInInspector] public int quadsPerSide = -1;
     [HideInInspector] public QuadtreeNode ownerNode;
+    [HideInInspector] public bool isGenerationPending = true;
 
     private static MaterialPropertyBlock propBlock;
 

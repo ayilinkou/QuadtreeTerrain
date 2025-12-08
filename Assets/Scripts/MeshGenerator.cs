@@ -1,10 +1,39 @@
 using System;
+using System.Collections;
+using System.Collections.Generic;
 using Unity.VisualScripting;
 using UnityEngine;
 
+struct MeshTask
+{
+    public string key;
+    public int quadsPerSide;
+    public float size;
+    public Vector2 center;
+    public Chunk owner;
+}
+
 public static class MeshGenerator
 {
-	
+	private static QuadtreeTerrain qtTerrain = null;
+	private static Queue<MeshTask> meshQueue = new Queue<MeshTask>();
+	private static bool generating = false;
+
+	public static Dictionary<string, Mesh> meshCache;
+	public static bool isGenerating => generating;
+	public static int meshesInQueue => meshQueue.Count;
+
+	public static void EnqueueMesh(string key, int quadsPerSide, float size, Vector2 center, Chunk owner)
+	{
+        meshQueue.Enqueue(new MeshTask {key = key, quadsPerSide = quadsPerSide, size = size, center = center, owner = owner});
+	}
+
+	public static void Init(QuadtreeTerrain qtt, int meshCacheSize)
+	{
+		qtTerrain = qtt;
+		meshCache = new Dictionary<string, Mesh>(meshCacheSize);
+	}
+
     // calculate number of quads per side
 	public static int GetResolutionForDepth(int depth, int maxDepth, int baseResolution, int maxResolution, float chunkSize,
                                             float targetSpacing = 1f)
@@ -20,7 +49,40 @@ public static class MeshGenerator
         return quadsPerSide;
     }
 
-	public static Mesh CreateChunkMesh(QuadtreeTerrain qtTerrain, int quadsPerSide, float size, Vector2 chunkCenter)
+	public static IEnumerator ProcessMeshQueue(float frameBudgetMilliseconds)
+	{
+		generating = true;
+		float frameBudgetSeconds = frameBudgetMilliseconds / 1000f;
+
+		while (meshQueue.Count > 0)
+		{
+			float start = Time.realtimeSinceStartup;
+			while (meshQueue.Count > 0 && (Time.realtimeSinceStartup - start) < frameBudgetSeconds)
+			{
+				var task = meshQueue.Dequeue();
+				if (meshCache.ContainsKey(task.key))
+					continue;
+
+				Mesh m = CreateChunkMesh(task.quadsPerSide, task.size, task.center);
+				m.name = task.key;
+				meshCache[task.key] = m;
+
+				if (task.owner != null && task.owner.quadsPerSide != task.quadsPerSide)
+				{
+					task.owner.SetMesh(m);
+					task.owner.SetMaterial(qtTerrain.chunkMaterial != null ? qtTerrain.chunkMaterial: QuadtreeTerrain.DefaultMaterial());
+            		task.owner.SetColor(qtTerrain.visualiseChunksCached ? UnityEngine.Random.ColorHSV(0f, 1f, 0.5f, 1f, 0.5f, 1f) : qtTerrain.materialColor);
+					task.owner.quadsPerSide = task.quadsPerSide;
+					task.owner.isGenerationPending = false;
+            		task.owner.gameObject.SetActive(true);
+				}
+			}
+			yield return null;
+		}
+		generating = false;
+	}
+
+	public static Mesh CreateChunkMesh(int quadsPerSide, float size, Vector2 chunkCenter)
 	{
 		if (quadsPerSide < 1)
 			quadsPerSide = 1;
@@ -59,16 +121,8 @@ public static class MeshGenerator
 
 				switch (qtTerrain.heightOffsetType)
 				{
-					case HeightOffsetType.Heightmap:
-						vy += qtTerrain.GetHeightmapValue(u, v) * qtTerrain.heightDisplacement;
-						break;
 					case HeightOffsetType.Noise:
 						vy += qtTerrain.GetPerlinNoise(u, v, qtTerrain.seed) * qtTerrain.heightDisplacement;
-						break;
-					case HeightOffsetType.HeightmapAndNoise:
-						vy += qtTerrain.GetHeightmapValue(u, v) * (1f - qtTerrain.heightmapToNoiseWeight);
-						vy += qtTerrain.GetPerlinNoise(u, v, qtTerrain.seed) * qtTerrain.heightmapToNoiseWeight;
-						vy *= qtTerrain.heightDisplacement;
 						break;
 					default:
 						break;
@@ -113,4 +167,19 @@ public static class MeshGenerator
 
 		return mesh;
 	}
+
+	public static void ClearMeshCache()
+    {
+        foreach (Mesh mesh in meshCache.Values)
+        {
+            if (mesh != null)
+            {
+                if (Application.isPlaying)
+                    UnityEngine.Object.DestroyImmediate(mesh);
+                else
+                    UnityEngine.Object.Destroy(mesh);
+            }
+        }
+        meshCache.Clear();
+    }
 }
