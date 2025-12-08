@@ -122,7 +122,7 @@ public static class MeshGenerator
 				switch (qtTerrain.heightOffsetType)
 				{
 					case HeightOffsetType.Noise:
-						vy += qtTerrain.GetPerlinNoise(u, v, qtTerrain.seed) * qtTerrain.heightDisplacement;
+						vy += qtTerrain.GetPerlinNoise(u, v) * qtTerrain.heightDisplacement;
 						break;
 					default:
 						break;

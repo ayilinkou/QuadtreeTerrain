@@ -138,7 +138,7 @@ public class QuadtreeTerrain : MonoBehaviour
         noiseOffsetY = (float)(rng.NextDouble() * 2000.0 - 1000.0);
     }
 
-    public float GetPerlinNoise(float u, float v, int noiseSeed)
+    public float GetPerlinNoise(float u, float v)
     {
         float amplitude = 1f;
         float frequency = 1f;
